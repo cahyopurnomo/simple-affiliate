@@ -1,0 +1,14 @@
+- web replika biasa, tanpa tusuk sate.
+
+Fitur:
+1. bisa join free member dari link sponsor.
+2. free member dapat serial email notifikasi secara otomatis, 
+saat Join free dan saat verifikasi email.
+3. free member dapat email follow up D+1, D+2, D+3 dst sampai 15x email dengan jeda waktu yg bisa diset oleh admin
+
+4. fitur upgrade status dari free member ke premium member.
+5. system follow up email otomatik untuk kirim materi buat yg sudah premium member
+
+6. member area yg berbeda isine untuk free member dan premium member
+
+7. aku arep go internasional => dual language atau bikin web beda ae?
