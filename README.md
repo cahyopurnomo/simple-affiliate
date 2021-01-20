@@ -1,2 +1,2 @@
-# simple-affiliate
+# wp-simple-affiliate
 Plugin Web Replika Wordpress 
