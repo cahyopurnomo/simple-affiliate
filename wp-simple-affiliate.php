@@ -11,690 +11,628 @@ License: GPLv2 or later
 Text Domain: WP Simple Affiliate
 */
 
-/**
-    * PART 1. Defining Custom Database Table
-    * ============================================================================
-    *
-    * In this part you are going to define custom database table,
-    * create it, update, and fill with some dummy data
-    *
-    * http://codex.wordpress.org/Creating_Tables_with_Plugins
-    *
-    * In case your are developing and want to check plugin use:
-    *
-    * DROP TABLE IF EXISTS wp_cte;
-    * DELETE FROM wp_options WHERE option_name = 'custom_table_example_install_data';
-    *
-    * to drop table and option
-    */
 
-/**
-    * $custom_table_example_db_version - holds current database version
-    * and used on plugin update to sync database tables
-    */
-global $custom_table_example_db_version;
-$custom_table_example_db_version = '1.1'; // version changed from 1.0 to 1.1
+/** START ADMIN MENU */
 
-/**
-    * register_activation_hook implementation
-    *
-    * will be called when user activates plugin first time
-    * must create needed database tables
-    */
-function custom_table_example_install()
-{
-    global $wpdb;
-    global $custom_table_example_db_version;
+add_action("admin_menu", "sa_menu_settings");
 
-    $table_name = $wpdb->prefix . 'users_detail'; // do not forget about tables prefix
+function sa_menu_settings() {
+    add_menu_page("Simple Affiliate - SA","Simple Affiliate","manage_options","members","sa_render_list_page","dashicons-groups",80);
+    add_submenu_page("members","Member List","All Member","manage_options","members","sa_render_list_page");
+    add_submenu_page("members","Add New Member","Add Member","manage_options","members_form","member_form_page_handler");
 
-    // sql to create your table
-    // NOTICE that:
-    // 1. each field MUST be in separate line
-    // 2. There must be two spaces between PRIMARY KEY and its name
-    //    Like this: PRIMARY KEY[space][space](id)
-    // otherwise dbDelta will not work
-    /*
-    $sql = "CREATE TABLE " . $table_name . " (
-        id int(11) NOT NULL AUTO_INCREMENT,
-        name tinytext NOT NULL,
-        email VARCHAR(100) NOT NULL,
-        age int(11) NULL,
-        PRIMARY KEY  (id)
-    );";
-    */
-    if( $wpdb->get_var('SHOW TABLE LIKE '.$table_name) != $table_name ){ //dont createif exist
-        $sql = "CREATE TABLE " . $table_name . " (
-            user_detail_idx int(11) NOT NULL AUTO_INCREMENT,
-            ID int(11) NOT NULL,
-            phone VARCHAR(15) NOT NULL,
-            city VARCHAR(100) NOT NULL,
-            province VARCHAR(100) NOT NULL,
-            PRIMARY KEY  (user_detail_idx)
-        );";
-    }
-
-    // we do not execute sql directly
-    // we are calling dbDelta which cant migrate database
-    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-    dbDelta($sql);
-
-    // save current database version for later use (on upgrade)
-    add_option('custom_table_example_db_version', $custom_table_example_db_version);
-
-    /**
-        * [OPTIONAL] Example of updating to 1.1 version
-        *
-        * If you develop new version of plugin
-        * just increment $custom_table_example_db_version variable
-        * and add following block of code
-        *
-        * must be repeated for each new version
-        * in version 1.1 we change email field
-        * to contain 200 chars rather 100 in version 1.0
-        * and again we are not executing sql
-        * we are using dbDelta to migrate table changes
-        */
-    $installed_ver = get_option('custom_table_example_db_version');
-
-    if ($installed_ver != $custom_table_example_db_version) {
-
-        if( $wpdb->get_var('SHOW TABLE LIKE '.$table_name) != $table_name ){ //dont createif exist
-            $sql = "CREATE TABLE " . $table_name . " (
-                user_detail_idx int(11) NOT NULL AUTO_INCREMENT,
-                ID int(11) NOT NULL,
-                phone VARCHAR(15) NOT NULL,
-                city VARCHAR(100) NOT NULL,
-                province VARCHAR(100) NOT NULL,
-                PRIMARY KEY  (user_detail_idx)
-            );";
-        }
-
-        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-        dbDelta($sql);
-
-        // notice that we are updating option, rather than adding it
-        update_option('custom_table_example_db_version', $custom_table_example_db_version);
-    }
-} // custom_table_example_install
-
-register_activation_hook(__FILE__, 'custom_table_example_install');
-
-/**
-    * register_activation_hook implementation
-    *
-    * [OPTIONAL]
-    * additional implementation of register_activation_hook
-    * to insert some dummy data
-    */
-function custom_table_example_install_data()
-{
-    global $wpdb;
-
-    $table_name = $wpdb->prefix . 'users_detail'; // do not forget about tables prefix
-
-    // insert if not found
-    $row = $wpdb->get_results("SELECT ID FROM ".$table_name." WHERE ID=1");
-    
-    if( count($row) == 0 ){
-        $wpdb->insert($table_name, array(
-            'ID' => 1,
-            'phone' => '0811896514',
-            'city' => 'Jakarta Selatan',
-            'province' => 'Jakarta'
-        ));
-    }
-    
-} // custom_table_example_install_data
-
-register_activation_hook(__FILE__, 'custom_table_example_install_data');
-
-/**
-    * Trick to update plugin database, see docs
-    */
-function custom_table_example_update_db_check()
-{
-    global $custom_table_example_db_version;
-    if (get_site_option('custom_table_example_db_version') != $custom_table_example_db_version) {
-        custom_table_example_install();
-    }
-} // custom_table_example_update_db_check
-
-add_action('plugins_loaded', 'custom_table_example_update_db_check');
-
-
-
-
-/**
-    * PART 2. Defining Custom Table List
-    * ============================================================================
-    *
-    * In this part you are going to define custom table list class,
-    * that will display your database records in nice looking table
-    *
-    * http://codex.wordpress.org/Class_Reference/WP_List_Table
-    * http://wordpress.org/extend/plugins/custom-list-table-example/
-    */
-
-if (!class_exists('WP_List_Table')) {
-    require_once(ABSPATH . 'wp-admin/includes/class-wp-list-table.php');
+    add_submenu_page("members","Email List","Email Blast","manage_options","emails","sa_render_email_list_page");
+    add_submenu_page("members","Add New Email","Add New Email","manage_options","email_form","email_form_page_handler");
 }
 
-/**
-    * Custom_Table_Example_List_Table class that will display our custom table
-    * records in nice table
-    */
-class Custom_Table_Example_List_Table extends WP_List_Table
-{
-    /**
-        * [REQUIRED] You must declare constructor and give some basic params
-        */
-    function __construct()
-    {
-        global $status, $page;
+/** END ADMIN MENU */
 
-        parent::__construct(array(
-            'singular' => 'member',
-            'plural' => 'members',
-        ));
-    }
 
-    /**
-        * [REQUIRED] this is a default column renderer
-        *
-        * @param $item - row (key, value array)
-        * @param $column_name - string (key)
-        * @return HTML
-        */
-    function column_default($item, $column_name)
-    {
-        return $item[$column_name];
-    }
+/** START MEMBER HANDLE */
 
-    /**
-        * [OPTIONAL] this is example, how to render specific column
-        *
-        * method name must be like this: "column_[column_name]"
-        *
-        * @param $item - row (key, value array)
-        * @return HTML
-        */
-    function column_age($item)
-    {
-        return '<em>' . $item['age'] . '</em>';
-    }
-
-    /**
-        * [OPTIONAL] this is example, how to render column with actions,
-        * when you hover row "Edit | Delete" links showed
-        *
-        * @param $item - row (key, value array)
-        * @return HTML
-        */
-    function column_name($item)
-    {
-        // links going to /admin.php?page=[your_plugin_page][&other_params]
-        // notice how we used $_REQUEST['page'], so action will be done on curren page
-        // also notice how we use $this->_args['singular'] so in this example it will
-        // be something like &person=2
-        $actions = array(
-            'edit' => sprintf('<a href="?page=persons_form&id=%s">%s</a>', $item['id'], __('Edit', 'custom_table_example')),
-            'delete' => sprintf('<a href="?page=%s&action=delete&id=%s">%s</a>', $_REQUEST['page'], $item['id'], __('Delete', 'custom_table_example')),
-        );
-
-        return sprintf('%s %s',
-            $item['name'],
-            $this->row_actions($actions)
-        );
-    }
-
-    /**
-        * [REQUIRED] this is how checkbox column renders
-        *
-        * @param $item - row (key, value array)
-        * @return HTML
-        */
-    function column_cb($item)
-    {
-        return sprintf(
-            '<input type="checkbox" name="id[]" value="%s" />',
-            $item['id']
-        );
-    }
-
-    /**
-        * [REQUIRED] This method return columns to display in table
-        * you can skip columns that you do not want to show
-        * like content, or description
-        *
-        * @return array
-        */
-    function get_columns()
-    {
-        $columns = array(
-            'cb' => '<input type="checkbox" />', //Render a checkbox instead of text
-            'name' => __('Name', 'custom_table_example'),
-            'email' => __('E-Mail', 'custom_table_example'),
-            'age' => __('Age', 'custom_table_example'),
-        );
-        return $columns;
-    }
-
-    /**
-        * [OPTIONAL] This method return columns that may be used to sort table
-        * all strings in array - is column names
-        * notice that true on name column means that its default sort
-        *
-        * @return array
-        */
-    function get_sortable_columns()
-    {
-        $sortable_columns = array(
-            'name' => array('name', true),
-            'email' => array('email', false),
-            'age' => array('age', false),
-        );
-        return $sortable_columns;
-    }
-
-    /**
-        * [OPTIONAL] Return array of bult actions if has any
-        *
-        * @return array
-        */
-    function get_bulk_actions()
-    {
-        $actions = array(
-            'delete' => 'Delete'
-        );
-        return $actions;
-    }
-
-    /**
-        * [OPTIONAL] This method processes bulk actions
-        * it can be outside of class
-        * it can not use wp_redirect coz there is output already
-        * in this example we are processing delete action
-        * message about successful deletion will be shown on page in next part
-        */
-    function process_bulk_action()
-    {
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'cte'; // do not forget about tables prefix
-
-        if ('delete' === $this->current_action()) {
-            $ids = isset($_REQUEST['id']) ? $_REQUEST['id'] : array();
-            if (is_array($ids)) $ids = implode(',', $ids);
-
-            if (!empty($ids)) {
-                $wpdb->query("DELETE FROM $table_name WHERE id IN($ids)");
-            }
-        }
-    }
-
-    /**
-        * [REQUIRED] This is the most important method
-        *
-        * It will get rows from database and prepare them to be showed in table
-        */
-    function prepare_items()
-    {
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'cte'; // do not forget about tables prefix
-
-        $per_page = 5; // constant, how much records will be shown per page
-
-        $columns = $this->get_columns();
-        $hidden = array();
-        $sortable = $this->get_sortable_columns();
-
-        // here we configure table headers, defined in our methods
-        $this->_column_headers = array($columns, $hidden, $sortable);
-
-        // [OPTIONAL] process bulk action if any
-        $this->process_bulk_action();
-
-        // will be used in pagination settings
-        $total_items = $wpdb->get_var("SELECT COUNT(id) FROM $table_name");
-
-        // prepare query params, as usual current page, order by and order direction
-        $paged = isset($_REQUEST['paged']) ? ($per_page * max(0, intval($_REQUEST['paged']) - 1)) : 0;
-        $orderby = (isset($_REQUEST['orderby']) && in_array($_REQUEST['orderby'], array_keys($this->get_sortable_columns()))) ? $_REQUEST['orderby'] : 'name';
-        $order = (isset($_REQUEST['order']) && in_array($_REQUEST['order'], array('asc', 'desc'))) ? $_REQUEST['order'] : 'asc';
-
-        // [REQUIRED] define $items array
-        // notice that last argument is ARRAY_A, so we will retrieve array
-        $this->items = $wpdb->get_results($wpdb->prepare("SELECT * FROM $table_name ORDER BY $orderby $order LIMIT %d OFFSET %d", $per_page, $paged), ARRAY_A);
-
-        // [REQUIRED] configure pagination
-        $this->set_pagination_args(array(
-            'total_items' => $total_items, // total items defined above
-            'per_page' => $per_page, // per page constant defined at top of method
-            'total_pages' => ceil($total_items / $per_page) // calculate pages count
-        ));
-    }
+if( !class_exists('SA_Member_List') ) {
+    require_once('class-sa-member-list.php');
 }
 
-/**
-    * PART 3. Admin page
-    * ============================================================================
-    *
-    * In this part you are going to add admin page for custom table
-    *
-    * http://codex.wordpress.org/Administration_Menus
-    */
+function sa_render_list_page() {
 
-/**
-    * admin_menu hook implementation, will add pages to list persons and to add new one
-    */
-function custom_table_example_admin_menu()
-{
-/*
-    add_menu_page(
-    	__('Persons', 'custom_table_example'), 
-    	__('Persons', 'custom_table_example'), 
-    	'activate_plugins', 
-    	'persons', 
-    	'custom_table_example_persons_page_handler'
-    );
+    $member_obj = new SA_Member_List();
+    echo '<div class="wrap"><h2>List of Member
+    <a class="add-new-h2" href="admin.php?page=members_form">Add New</a></h2>';
     
-    add_submenu_page(
-    	'persons', 
-    	__('Persons', 'custom_table_example'), 
-    	__('Persons', 'custom_table_example'), 
-    	'activate_plugins', 
-    	'persons', 
-    	'custom_table_example_persons_page_handler'
-    );
-    
-    // add new will be described in next part
-    add_submenu_page(
-    	'persons', 
-    	__('Add new', 'custom_table_example'), 
-    	__('Add new', 'custom_table_example'), 
-    	'activate_plugins', 
-    	'persons_form', 
-    	'custom_table_example_persons_form_page_handler'
-    );
-*/
-    $slug = 'wp-simple-affiliate';
-
-	add_menu_page(
-		'Data Members', 				// page title
-		'Simple Affiliate', 		// menu title
-		'manage_options',			// capability
-		$slug,						// slug
-		'custom_table_example_persons_page_handler', 	// callback
-		'dashicons-networking', 	// icon
-		80							// position
-	);   
-	  
-	add_submenu_page(
-		$slug,               				// parent slug
-		'Data Members',                      // page title
-		'Members',                      // menu title
-		'manage_options',                   // capability
-		$slug,               				// slug
-		'custom_table_example_persons_page_handler' 				// callback
-	); 
-	
-	
-	add_submenu_page(
-		$slug,               				// parent slug
-		'Add New',                	// page title
-		'Add New',                	// menu title
-		'manage_options',                   // capability
-		'persons_form', 	// callback
-		'custom_table_example_persons_form_page_handler',  // slug
-		
-	); 
-	 
-	/*
-	add_submenu_page(
-		$slug,          			// parent slug
-		'Email Blast',              // page title
-		'Email Blast',              // menu title
-		'manage_options',           // capability
-		'wpsa-email-blast',  		// slug
-		'wpsa_email_blast' 			// callback
-	);
-	*/  
-}
-
-add_action('admin_menu', 'custom_table_example_admin_menu');
-
-/**
-    * List page handler
-    *
-    * This function renders our custom table
-    * Notice how we display message about successfull deletion
-    * Actualy this is very easy, and you can add as many features
-    * as you want.
-    *
-    * Look into /wp-admin/includes/class-wp-*-list-table.php for examples
-    */
-function custom_table_example_persons_page_handler()
-{
-    global $wpdb;
-
-    $table = new Custom_Table_Example_List_Table();
-    $table->prepare_items();
-
     $message = '';
-    if ('delete' === $table->current_action()) {
-        $message = '<div class="updated below-h2" id="message"><p>' . sprintf(__('Items deleted: %d', 'custom_table_example'), count($_REQUEST['id'])) . '</p></div>';
+
+    if ( 'delete' === $member_obj->current_action() ) {
+        $message = '<div class="updated below-h2" id="message"><p>' . sprintf(__('Member deleted: %d', 'sa_simple_affiliate'), is_array($_REQUEST['id']) ? count($_REQUEST['id']) : $_REQUEST['id']) . '</p></div>';
     }
-    ?>
-<div class="wrap">
 
-    <div class="icon32 icon32-posts-post" id="icon-edit"><br></div>
-    <h2><?php _e('Persons', 'custom_table_example')?> <a class="add-new-h2"
-                                    href="<?php echo get_admin_url(get_current_blog_id(), 'admin.php?page=persons_form');?>"><?php _e('Add new', 'custom_table_example')?></a>
-    </h2>
-    <?php echo $message; ?>
+    echo '<form method="post" >';
 
-    <form id="persons-table" method="GET">
-        <input type="hidden" name="page" value="<?php echo $_REQUEST['page'] ?>"/>
-        <?php $table->display() ?>
-    </form>
+    if( isset($_POST['s']) ){
+        $member_obj->prepare_items($_POST['s']);
+    } else {
+        $member_obj->prepare_items();
+    }
 
-</div>
-<?php
-}
+    $member_obj->search_box('Search', 'search_id');
+    $member_obj->display();
 
-/**
-    * PART 4. Form for adding andor editing row
-    * ============================================================================
-    *
-    * In this part you are going to add admin page for adding andor editing items
-    * You cant put all form into this function, but in this example form will
-    * be placed into meta box, and if you want you can split your form into
-    * as many meta boxes as you want
-    *
-    * http://codex.wordpress.org/Data_Validation
-    * http://codex.wordpress.org/Function_Reference/selected
-    */
+    echo '</div>'; 
+} // sa_render_list_page
 
-/**
-    * Form page handler checks is there some data posted and tries to save it
-    * Also it renders basic wrapper in which we are callin meta box render
-    */
-function custom_table_example_persons_form_page_handler()
-{
+function member_form_page_handler() {
     global $wpdb;
-    $table_name = $wpdb->prefix . 'cte'; // do not forget about tables prefix
+    $table_name = $wpdb->prefix . 'users';
+    $table_users_details = $wpdb->prefix . 'users_details';
 
     $message = '';
     $notice = '';
 
-    // this is default $item which will be used for new records
     $default = array(
-        'id' => 0,
-        'name' => '',
-        'email' => '',
-        'age' => null,
+        'id'                => 0,
+        'user_login'        => '',
+        'user_pass'         => '',
+        'user_nicename'     => '',
+        'user_email'        => '',
+        'display_name'      => '',
+        'user_registered'   => date('Y-m-d h:i:s')
     );
 
-    // here we are verifying does this request is post back and have correct nonce
-    if (isset($_REQUEST['nonce']) && wp_verify_nonce($_REQUEST['nonce'], basename(__FILE__))) {
-        // combine our default item with request params
+    if ( isset($_REQUEST['nonce']) && wp_verify_nonce($_REQUEST['nonce'], basename(__FILE__) )) {
         $item = shortcode_atts($default, $_REQUEST);
-        // validate data, and if all ok save item to database
-        // if id is zero insert otherwise update
-        $item_valid = custom_table_example_validate_person($item);
-        if ($item_valid === true) {
-            if ($item['id'] == 0) {
-                $result = $wpdb->insert($table_name, $item);
-                $item['id'] = $wpdb->insert_id;
-                if ($result) {
-                    $message = __('Item was successfully saved', 'custom_table_example');
+        $item_valid = input_member_validation($item);
+        
+        if ( $item_valid === true ){
+            if ( $item['id'] == 0 ) {
+                $user_exist = existing_data_validation($item);
+
+                if ( $user_exist === false ) {
+                    $result = $wpdb->insert($table_name, $item);
+                    $item['id'] = $wpdb->insert_id;
+
+                    if ( $result ) {
+                        $message = __('Member was successfully saved', 'sa_simple_affiliate');
+                        
+                        $to = $item['user_email'];
+                        $subject = "Selamat Bergabung di SatuKaki.Net";
+                        $headers = array('From: Admin SatuKaki.Net <c.purnomo@gmail.com>', 'Content-Type: text/html; charset=UTF-8');
+                        $attachment = array();
+                        $body = 
+                                $item['display_name'].", selamat datang di SatuKaki.Net.<br \>
+                                <br \><br \>
+                                Salam Sukses,<br \>
+                                Admin SatuKaki.Net.";
+                    
+                        wp_mail($to, $subject, $body, $headers, $attachment);
+                    } else {
+                        $notice = __('There was an error while saving member', 'sa_simple_affiliate');
+                    }
                 } else {
-                    $notice = __('There was an error while saving item', 'custom_table_example');
+                    $notice = __($user_exist, 'sa_simple_affiliate');
                 }
             } else {
-                $result = $wpdb->update($table_name, $item, array('id' => $item['id']));
-                if ($result) {
-                    $message = __('Item was successfully updated', 'custom_table_example');
+                $result = $wpdb->update($table_name, $item, array('ID' => $item['id']));
+
+                if ( $result ) {
+                    $message = __('Member was successfully updated', 'sa_simple_affiliate');
+                    // wp_redirect('admin.php?page=members');
                 } else {
-                    $notice = __('There was an error while updating item', 'custom_table_example');
+                    $notice = __('There was an error while updating member', 'sa_simple_affiliate');
                 }
             }
         } else {
-            // if $item_valid not true it contains error message(s)
             $notice = $item_valid;
         }
-    }
-    else {
-        // if this is not post back we load item to edit or give new one to create
+    } else {
         $item = $default;
-        if (isset($_REQUEST['id'])) {
-            $item = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $_REQUEST['id']), ARRAY_A);
-            if (!$item) {
+
+        if ( isset($_REQUEST['id']) ) {
+            $sql = "SELECT u.ID, u.user_login, u.user_email, u.user_nicename, u.display_name, u.user_sponsor_id, sp.display_name as sponsor_display_name, ";
+            $sql .= "ud.user_city, ud.user_province, user_phone, user_level ";
+            $sql .= "FROM $table_name sp ";
+            $sql .= "JOIN $table_name u ON sp.ID = u.user_sponsor_id ";
+            $sql .= "JOIN $table_users_details ud ON ud.user_id = u.ID ";
+            $sql .= "WHERE u.ID = %d";
+            $item = $wpdb->get_row($wpdb->prepare($sql, $_REQUEST['id']), ARRAY_A);
+            $item['id'] = $item['ID'];
+
+            if ( !$item ) {
                 $item = $default;
-                $notice = __('Item not found', 'custom_table_example');
+                $notice = __('Member not found', 'sa_simple_affiliate');
             }
         }
     }
 
-    // here we adding our custom meta box
-    add_meta_box('persons_form_meta_box', 'Person data', 'custom_table_example_persons_form_meta_box_handler', 'person', 'normal', 'default');
+    add_meta_box('members_form_meta_box', 'Data Member', 'members_form_meta_box_handler', 'member', 'normal', 'default');
 
-    ?>
-<div class="wrap">
-    <div class="icon32 icon32-posts-post" id="icon-edit"><br></div>
-    <h2><?php _e('Person', 'custom_table_example')?> <a class="add-new-h2"
-                                href="<?php echo get_admin_url(get_current_blog_id(), 'admin.php?page=persons');?>"><?php _e('back to list', 'custom_table_example')?></a>
-    </h2>
+?>
+    <div class="wrap">
+        <div class="icon32 icon32-posts-post" id="icon-edit"><br></div>
+        <h2><?php _e('Member', 'sa_simple_affiliate')?> <a class="add-new-h2" href="<?php echo get_admin_url(get_current_blog_id(), 'admin.php?page=members');?>"><?php _e('back to list', 'SA_Simple_Affiliate')?></a>
+        </h2>
 
-    <?php if (!empty($notice)): ?>
-    <div id="notice" class="error"><p><?php echo $notice ?></p></div>
-    <?php endif;?>
-    <?php if (!empty($message)): ?>
-    <div id="message" class="updated"><p><?php echo $message ?></p></div>
-    <?php endif;?>
+        <?php if (!empty($notice)): ?>
+        <div id="notice" class="error"><p><?php echo $notice ?></p></div>
+        <?php endif;?>
+        <?php if (!empty($message)): ?>
+        <div id="message" class="updated"><p><?php echo $message ?></p></div>
+        <?php endif;?>
 
-    <form id="form" method="POST">
-        <input type="hidden" name="nonce" value="<?php echo wp_create_nonce(basename(__FILE__))?>"/>
-        <?php /* NOTICE: here we storing id to determine will be item added or updated */ ?>
-        <input type="hidden" name="id" value="<?php echo $item['id'] ?>"/>
-
-        <div class="metabox-holder" id="poststuff">
-            <div id="post-body">
-                <div id="post-body-content">
-                    <?php /* And here we call our custom meta box */ ?>
-                    <?php do_meta_boxes('person', 'normal', $item); ?>
-                    <input type="submit" value="<?php _e('Save', 'custom_table_example')?>" id="submit" class="button-primary" name="submit">
+        <form id="form" method="POST">
+            <input type="hidden" name="nonce" value="<?php echo wp_create_nonce(basename(__FILE__))?>"/>
+            <?php /* NOTICE: here we storing id to determine will be item added or updated */ ?>
+            <input type="hidden" name="id" value="<?php echo isset($item['id']) ? $item['id'] : ''; ?>"/>
+            <input type="hidden" name="user_sponsor_id" value="<?php echo isset($item['user_sponsor_id']) ? $item['user_sponsor_id'] : 1; ?>"/>
+            <div class="metabox-holder" id="poststuff">
+                <div id="post-body">
+                    <div id="post-body-content">
+                        <?php /* And here we call our custom meta box */ ?>
+                        <?php do_meta_boxes('member', 'normal', $item); ?>
+                        <?php $action_label = !empty($item['id']) && $item['id'] > 0 ? 'Update' : 'Save'; ?>
+                        <input type="submit" value="<?php _e($action_label, 'sa_simple_affiliate')?>" id="submit" class="button-primary" name="submit">
+                    </div>
                 </div>
             </div>
-        </div>
-    </form>
-</div>
+        </form>
+    </div>
 <?php
-}
+} //member_form_page_handler
 
-/**
-    * This function renders our custom meta box
-    * $item is row
-    *
-    * @param $item
-    */
-function custom_table_example_persons_form_meta_box_handler($item)
-{
+function members_form_meta_box_handler($item){
     ?>
+    <table cellspacing="2" cellpadding="5" style="width: 100%;" class="form-table">
+        <tbody>
+        <tr class="form-field">
+            <th valign="top" scope="row">
+                <label for="sponsor_display_name"><?php _e('Sponsor', 'sa_simple_affiliate')?></label>
+            </th>
+            <td>
+                <input id="sponsor_display_name" name="sponsor_display_name" type="text" style="width: 95%" value="<?php echo ( ! empty( $item['sponsor_display_name'] ) ) ? esc_attr( wp_unslash( $item['sponsor_display_name'] ) ) : 'Taufik Kesuma'; ?>" size="100" class="code" placeholder="<?php _e('Sponsor', 'sa_simple_affiliate')?>" required disabled>
+            </td>
+        </tr>
+        <tr class="form-field">
+            <th valign="top" scope="row">
+                <label for="user_username"><?php _e('Username', 'sa_simple_affiliate')?></label>
+            </th>
+            <td>
+                <input id="user_username" name="user_login" type="text" style="width: 95%" value="<?php echo ( ! empty( $item['user_login'] ) ) ? esc_attr( wp_unslash( $item['user_login'] ) ) : ''; ?>" size="100" class="code" placeholder="<?php _e('Username', 'sa_simple_affiliate')?>" required <?php echo isset($item['id']) && $item['id'] > 0 ? 'disabled_' : ''; ?>>
+            </td>
+        </tr>
+        <tr class="form-field">
+            <th valign="top" scope="row">
+                <label for="user_pass"><?php _e('Password', 'sa_simple_affiliate')?></label>
+            </th>
+            <td>
+                <input id="user_pass" name="user_pass" type="password" style="width: 95%" value="<?php echo ( ! empty( $item['user_pass'] ) ) ? esc_attr( wp_unslash( $item['user_pass'] ) ) : ''; ?>" size="100" class="code" placeholder="<?php _e('Password', 'sa_simple_affiliate')?>" required>
+            </td>
+        </tr>
+        <tr class="form-field">
+            <th valign="top" scope="row">
+                <label for="user_nicename"><?php _e('Nicename', 'sa_simple_affiliate')?></label>
+            </th>
+            <td>
+                <input id="user_nicename" name="user_nicename" type="text" style="width: 95%" value="<?php echo ( ! empty( $item['user_nicename'] ) ) ? esc_attr( wp_unslash( $item['user_nicename'] ) ) : ''; ?>" size="100" class="code" placeholder="<?php _e('Nicename', 'sa_simple_affiliate')?>" required <?php echo isset($item['id']) && $item['id'] > 0 ? 'disabled_' : ''; ?>>
+            </td>
+        </tr>
+        <tr class="form-field">
+            <th valign="top" scope="row">
+                <label for="user_email"><?php _e('E-Mail', 'sa_simple_affiliate')?></label>
+            </th>
+            <td>
+                <input id="user_email" name="user_email" type="email" style="width: 95%" value="<?php echo ( ! empty( $item['user_email'] ) ) ? esc_attr( wp_unslash( $item['user_email'] ) ) : ''; ?>" size="50" class="code" placeholder="<?php _e('Your E-Mail', 'sa_simple_affiliate')?>" required <?php echo isset($item['id']) && $item['id'] > 0 ? 'disabled_' : ''; ?>>
+            </td>
+        </tr>
+        <tr class="form-field">
+            <th valign="top" scope="row">
+                <label for="display_name"><?php _e('Display Name', 'sa_simple_affiliate')?></label>
+            </th>
+            <td>
+                <input id="display_name" name="display_name" type="text" style="width: 95%" value="<?php echo ( ! empty( $item['display_name'] ) ) ? esc_attr( wp_unslash( $item['display_name'] ) ) : ''; ?>" size="100" class="code" placeholder="<?php _e('Display Name', 'sa_simple_affiliate')?>" required>
+            </td>
+        </tr>
+        <tr class="form-field">
+            <th valign="top" scope="row">
+                <label for="user_phone"><?php _e('Phone', 'sa_simple_affiliate')?></label>
+            </th>
+            <td>
+                <input id="user_phone" name="user_phone" type="text" style="width: 95%" value="<?php echo ( ! empty( $item['user_phone'] ) ) ? esc_attr( wp_unslash( $item['user_phone'] ) ) : ''; ?>" size="100" class="code" placeholder="<?php _e('Phone', 'sa_simple_affiliate')?>" required>
+            </td>
+        </tr>
+        <tr class="form-field">
+            <th valign="top" scope="row">
+                <label for="user_city"><?php _e('City', 'sa_simple_affiliate')?></label>
+            </th>
+            <td>
+                <input id="user_city" name="user_city" type="text" style="width: 95%" value="<?php echo ( ! empty( $item['user_city'] ) ) ? esc_attr( wp_unslash( $item['user_city'] ) ) : ''; ?>" size="100" class="code" placeholder="<?php _e('City', 'sa_simple_affiliate')?>" required>
+            </td>
+        </tr>
+        <tr class="form-field">
+            <th valign="top" scope="row">
+                <label for="user_province"><?php _e('Province', 'sa_simple_affiliate')?></label>
+            </th>
+            <td>
+                <input id="user_province" name="user_province" type="text" style="width: 95%" value="<?php echo ( ! empty( $item['user_province'] ) ) ? esc_attr( wp_unslash( $item['user_province'] ) ) : ''; ?>" size="100" class="code" placeholder="<?php _e('Province', 'sa_simple_affiliate')?>" required>
+            </td>
+        </tr>
+        <tr class="form-field">
+            <th valign="top" scope="row">
+                <label for="user_level"><?php _e('Level', 'sa_simple_affiliate')?></label>
+            </th>
+            <td>
+                <input id="user_level" name="user_level" type="text" style="width: 95%" value="<?php echo ( ! empty( $item['user_level'] ) ) ? esc_attr( wp_unslash( $item['user_level'] ) ) : 'SILVER'; ?>" size="100" class="code" placeholder="<?php _e('Level', 'sa_simple_affiliate')?>" required>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+    <?php
+} // members_form_meta_box_handler
 
-<table cellspacing="2" cellpadding="5" style="width: 100%;" class="form-table">
-    <tbody>
-    <tr class="form-field">
-        <th valign="top" scope="row">
-            <label for="name"><?php _e('Name', 'custom_table_example')?></label>
-        </th>
-        <td>
-            <input id="name" name="name" type="text" style="width: 95%" value="<?php echo esc_attr($item['name'])?>"
-                    size="50" class="code" placeholder="<?php _e('Your name', 'custom_table_example')?>" required>
-        </td>
-    </tr>
-    <tr class="form-field">
-        <th valign="top" scope="row">
-            <label for="email"><?php _e('E-Mail', 'custom_table_example')?></label>
-        </th>
-        <td>
-            <input id="email" name="email" type="email" style="width: 95%" value="<?php echo esc_attr($item['email'])?>"
-                    size="50" class="code" placeholder="<?php _e('Your E-Mail', 'custom_table_example')?>" required>
-        </td>
-    </tr>
-    <tr class="form-field">
-        <th valign="top" scope="row">
-            <label for="age"><?php _e('Age', 'custom_table_example')?></label>
-        </th>
-        <td>
-            <input id="age" name="age" type="number" style="width: 95%" value="<?php echo esc_attr($item['age'])?>"
-                    size="50" class="code" placeholder="<?php _e('Your age', 'custom_table_example')?>" required>
-        </td>
-    </tr>
-    </tbody>
-</table>
-<?php
+/** END MEMBER HANDLE */
+
+
+/** START EMAIL HANDLE */
+
+if( !class_exists('SA_Email_List') ) {
+    require_once('class-sa-email-list.php');
 }
 
-/**
-    * Simple function that validates data and retrieve bool on success
-    * and error message(s) on error
-    *
-    * @param $item
-    * @return bool|string
-    */
-function custom_table_example_validate_person($item)
-{
+function sa_render_email_list_page() {
+    $email_obj = new SA_Email_List();
+    echo '<div class="wrap"><h2>Follow Up Email List
+    <a class="add-new-h2" href="admin.php?page=email_form">Add New Email</a></h2>';
+    
+    $message = '';
+
+    if ( 'delete' === $email_obj->current_action() ) {
+        $message = '<div class="updated below-h2" id="message"><p>' . sprintf(__('Email deleted: %d', 'sa_simple_affiliate'), is_array($_REQUEST['id']) ? count($_REQUEST['id']) : $_REQUEST['id']) . '</p></div>';
+    }
+
+    echo '<form method="post" >';
+
+    if( isset($_POST['s']) ){
+        $email_obj->prepare_items($_POST['s']);
+    } else {
+        $email_obj->prepare_items();
+    }
+
+    $email_obj->search_box('Search', 'search_id');
+    
+    $email_obj->display();
+
+    echo '</div>'; 
+
+    
+} // sa_render_email_list_page
+
+function email_form_page_handler() {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'blast_email';
+
+    $message = '';
+    $notice = '';
+
+    $default = array(
+        'id'            => 0,
+        'day'           => '',
+        'user_level'    => '',
+        'email_msg'     => '',
+    );
+
+    if ( isset($_REQUEST['nonce']) && wp_verify_nonce($_REQUEST['nonce'], basename(__FILE__) )) {
+        $item = shortcode_atts($default, $_REQUEST);
+        $item_valid = input_email_validation($item);
+        
+        if ( $item_valid === true ){
+            if ( $item['id'] == 0 ) {
+                $user_exist = existing_data_email_validation($item);
+
+                if ( $user_exist === false ) {
+                    $result = $wpdb->insert($table_name, $item);
+                    $item['id'] = $wpdb->insert_id;
+
+                    if ( $result ) {
+                        $message = __('Email content was successfully saved', 'sa_simple_affiliate');
+                    } else {
+                        $notice = __('There was an error while saving email content', 'sa_simple_affiliate');
+                    }
+                } else {
+                    $notice = __($user_exist, 'sa_simple_affiliate');
+                }
+            } else {
+                $result = $wpdb->update($table_name, $item, array('ID' => $item['id']));
+
+                if ( $result ) {
+                    $message = __('Email Content was successfully updated', 'sa_simple_affiliate');
+                } else {
+                    $notice = __('There was an error while updating email content', 'sa_simple_affiliate');
+                }
+            }
+        } else {
+            $notice = $item_valid;
+        }
+    } else {
+        $item = $default;
+
+        if ( isset($_REQUEST['id']) ) {
+            $sql = "SELECT * FROM $table_name";
+            $sql .= "WHERE u.id = %d";
+            $item = $wpdb->get_row($wpdb->prepare($sql, $_REQUEST['id']), ARRAY_A);
+            $item['id'] = $item['id'];
+
+            if ( !$item ) {
+                $item = $default;
+                $notice = __('Email content not found', 'sa_simple_affiliate');
+            }
+        }
+    }
+
+    add_meta_box('emails_form_meta_box', 'Data Email', 'emails_form_meta_box_handler', 'email', 'normal', 'default');
+
+?>
+    <div class="wrap">
+        <div class="icon32 icon32-posts-post" id="icon-edit"><br></div>
+        <h2><?php _e('Email', 'sa_simple_affiliate')?> <a class="add-new-h2" href="<?php echo get_admin_url(get_current_blog_id(), 'admin.php?page=emails');?>"><?php _e('back to list', 'SA_Simple_Affiliate')?></a>
+        </h2>
+
+        <?php if (!empty($notice)): ?>
+        <div id="notice" class="error"><p><?php echo $notice ?></p></div>
+        <?php endif;?>
+        <?php if (!empty($message)): ?>
+        <div id="message" class="updated"><p><?php echo $message ?></p></div>
+        <?php endif;?>
+
+        <form id="form" method="POST">
+            <input type="hidden" name="nonce" value="<?php echo wp_create_nonce(basename(__FILE__))?>"/>
+            <?php /* NOTICE: here we storing id to determine will be item added or updated */ ?>
+            <input type="hidden" name="id" value="<?php echo isset($item['id']) ? $item['id'] : ''; ?>"/>
+            <div class="metabox-holder" id="poststuff">
+                <div id="post-body">
+                    <div id="post-body-content">
+                        <?php /* And here we call our custom meta box */ ?>
+                        <?php do_meta_boxes('email', 'normal', $item); ?>
+                        <?php $action_label = !empty($item['id']) && $item['id'] > 0 ? 'Update' : 'Save'; ?>
+                        <input type="submit" value="<?php _e($action_label, 'sa_simple_affiliate')?>" id="submit" class="button-primary" name="submit">
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+<?php
+} // email_form_page_handler
+
+function emails_form_meta_box_handler($item){
+    ?>
+    <table cellspacing="2" cellpadding="5" style="width: 100%;" class="form-table">
+        <tbody>
+        <tr class="form-field">
+            <th valign="top" scope="row">
+                <label for="day"><?php _e('Day', 'sa_simple_affiliate')?></label>
+            </th>
+            <td>
+                <input id="day" name="day" type="number" style="width: 95%" value="<?php echo ( ! empty( $item['day'] ) ) ? esc_attr( wp_unslash( $item['day'] ) ) : ''; ?>" size="100" class="code" placeholder="<?php _e('Day', 'sa_simple_affiliate')?>" required>
+            </td>
+        </tr>
+        <tr class="form-field">
+            <th valign="top" scope="row">
+                <label for="user_level"><?php _e('Member Level', 'sa_simple_affiliate')?></label>
+            </th>
+            <td>
+                <?php  
+                $selected_silver = !empty( $item['user_level'] ) && $item['user_level'] == 'SILVER' ? 'selected' : ''; 
+                $selected_premium = !empty( $item['user_level'] ) && $item['user_level'] == 'premium' ? 'selected' : ''; 
+                ?>
+                <select name="user_level">
+                    <option value="SILVER" <?=$selected_silver?>>SILVER</option>
+                    <option value="PREMIUM" <?=$selected_premium?>>PREMIUM</option>
+                </select>
+                <!-- <input id="user_level" name="user_level" type="text" style="width: 95%" value="<?php echo ( ! empty( $item['user_level'] ) ) ? esc_attr( wp_unslash( $item['user_level'] ) ) : ''; ?>" size="100" class="code" placeholder="<?php _e('Member Level', 'sa_simple_affiliate')?>" required> -->
+            </td>
+        </tr>
+        <tr class="form-field">
+            <th valign="top" scope="row">
+                <label for="email_msg"><?php _e('Email Message', 'sa_simple_affiliate')?></label>
+            </th>
+            <td>
+                <textarea id="email_msg" name="email_msg" rows="15" placeholder="<?php _e('Email Content', 'sa_simple_affiliate')?>" required>
+                <?php echo ( ! empty( $item['email_msg'] ) ) ? esc_attr( wp_unslash( $item['email_msg'] ) ) : ''; ?>
+                </textarea>
+                
+            </td>
+        </tr>
+        </tbody>
+    </table>
+    <?php
+} // emails_form_meta_box_handler
+
+/** END EMAIL HANDLE */
+
+
+
+
+/** START GLOBAL FUCNTION */
+
+function input_email_validation($item){
+    global $wpdb;
+
+    $table_name = $wpdb->prefix . 'blast_email';
+
     $messages = array();
 
-    if (empty($item['name'])) $messages[] = __('Name is required', 'custom_table_example');
-    if (!empty($item['email']) && !is_email($item['email'])) $messages[] = __('E-Mail is in wrong format', 'custom_table_example');
-    if (!ctype_digit($item['age'])) $messages[] = __('Age in wrong format', 'custom_table_example');
-    //if(!empty($item['age']) && !absint(intval($item['age'])))  $messages[] = __('Age can not be less than zero');
-    //if(!empty($item['age']) && !preg_match('/[0-9]+/', $item['age'])) $messages[] = __('Age must be number');
-    //...
-
-    if (empty($messages)) return true;
+    if ( empty($item['day']) )
+        $messages[] = __('Day is required', 'sa_simple_affiliate');
+    
+    if ( empty($item['user_level']) )
+        $messages[] = __('Member Level is required', 'sa_simple_affiliate');
+    
+    if ( empty($item['email_msg']) )
+        $messages[] = __('Email Message is required', 'sa_simple_affiliate');
+    
+    if ( empty($messages) )
+        return true;
+    
     return implode('<br />', $messages);
 }
 
-/**
-    * Do not forget about translating your plugin, use __('english string', 'your_uniq_plugin_name') to retrieve translated string
-    * and _e('english string', 'your_uniq_plugin_name') to echo it
-    * in this example plugin your_uniq_plugin_name == custom_table_example
-    *
-    * to create translation file, use poedit FileNew catalog...
-    * Fill name of project, add "." to path (ENSURE that it was added - must be in list)
-    * and on last tab add "__" and "_e"
-    *
-    * Name your file like this: [my_plugin]-[ru_RU].po
-    *
-    * http://codex.wordpress.org/Writing_a_Plugin#Internationalizing_Your_Plugin
-    * http://codex.wordpress.org/I18n_for_WordPress_Developers
-    */
-function custom_table_example_languages()
-{
-    load_plugin_textdomain('custom_table_example', false, dirname(plugin_basename(__FILE__)));
+function existing_data_email_validation($item){
+    global $wpdb;
+
+    $table_name = $wpdb->prefix . 'blast_email';
+
+    $messages = array();
+
+    $day = $item['day'];
+    $user_level = $item['user_level'];
+
+    $check_row = $wpdb->get_row("SELECT * FROM $table_name WHERE day = '$day' AND user_level = '$user_level'", ARRAY_A);
+
+    if ( isset($check_row['day']) && $check_row['day'] == $day )
+        $messages[] = __('Day & Member Level sudah ada.', 'sa_simple_affiliate');
+    
+    if ( empty($messages) )
+        return false;
+    
+    return implode('<br />', $messages);
 }
 
-add_action('init', 'custom_table_example_languages');
+function input_member_validation($item){
+    global $wpdb;
+
+    $table_name = $wpdb->prefix . 'users';
+
+    $messages = array();
+
+    if ( empty($item['user_login']) )
+        $messages[] = __('Username is required', 'sa_simple_affiliate');
+    
+    if ( empty($item['user_pass']) )
+        $messages[] = __('Password is required', 'sa_simple_affiliate');
+    
+    if ( empty($item['user_nicename']) )
+        $messages[] = __('Nicename is required', 'sa_simple_affiliate');
+    
+    if ( empty($item['user_email']) )
+        $messages[] = __('Email is required', 'sa_simple_affiliate');
+    
+    if ( empty($item['display_name']) )
+        $messages[] = __('Display Name is required', 'sa_simple_affiliate');
+    
+    if ( empty($messages) )
+        return true;
+    
+    return implode('<br />', $messages);
+}
+
+function existing_data_validation($item){
+    global $wpdb;
+
+    $table_name = $wpdb->prefix . 'users';
+
+    $messages = array();
+
+    $email = $item['user_email'];
+    $username = $item['user_login'];
+
+    $check_user_email = $wpdb->get_row("SELECT * FROM $table_name WHERE user_email = '$email'", ARRAY_A);
+    $check_user_login = $wpdb->get_row("SELECT * FROM $table_name WHERE user_login = '$username'", ARRAY_A);
+
+    if ( isset($check_user_email['user_email']) && $check_user_email['user_email'] == $item['user_email'] )
+        $messages[] = __('Email sudah terdaftar.', 'sa_simple_affiliate');
+    
+    if ( isset($check_user_login['user_login']) && $check_user_login['user_login'] == $item['user_login'] )
+        $messages[] = __('Username sudah terdaftar.', 'sa_simple_affiliate');
+    
+    if ( empty($messages) )
+        return false;
+    
+    return implode('<br />', $messages);
+}
+
+/** END GLOBAL FUCNTION */
+
+
+/** START CRON FOLLOW UP EMAIL */
+function sent_email_interval($schedules) {
+    $schedules['one-minutes'] = array(
+        'interval' => 60,
+        'display'  => 'Every Minutes'
+    );
+
+    return $schedules;
+}
+
+add_filter('cron_schedules', 'sent_email_interval');
+
+if ( !wp_next_scheduled('sent_email_hook') ) {
+    wp_next_scheduled(time(), 'one-minutes', 'sent_email_hook');
+}
+
+// add_action('sent_email_hook', 'send_email_follow_up');
+add_action('init', 'send_email_follow_up');
+
+function send_email_follow_up() {
+    global $wpdb, $email_blast_id, $user_id, $send_date;
+
+    // get data user except admin
+    $table_users = $wpdb->prefix . 'users';
+    $table_users_details = $wpdb->prefix . 'users_details';
+    $table_blast_log = $wpdb->prefix . 'blast_log';
+    $table_blast_email = $wpdb->prefix . 'blast_email';
+
+    $sql = "SELECT * FROM $table_blast_email WHERE user_level='SILVER' ORDER BY id DESC LIMIT 1";
+    $data_silver = $wpdb->get_row($sql, ARRAY_A);
+    $day_silver = $data_silver['day'];
+
+    $sql = "SELECT * FROM $table_blast_email WHERE user_level='PREMIUM' ORDER BY id DESC LIMIT 1";
+    $data_premium = $wpdb->get_row($sql, ARRAY_A);
+    $day_premium = $data_premium['day'];
+
+    $sql = "SELECT u.*, ud.user_level ";
+    $sql .= "FROM $table_users u ";
+    $sql .= "JOIN $table_users_details ud ON ud.user_id = u.ID ";
+    $sql .= "WHERE u.user_login != 'admin'";
+    $users = $wpdb->get_results($sql, ARRAY_A);
+
+    foreach( $users as $key => $user ) {
+        //get last log for users
+        $sql1 = "SELECT bl.*, be.id as email_id, be.day, be.user_level FROM $table_blast_log bl ";
+        $sql1 .= "JOIN $table_blast_email be ON be.id = bl.email_blast_id ";
+        $sql1 .= "WHERE bl.user_id=" . $user['ID'] . " AND be.user_level='" . $user['user_level'] . "' ORDER BY id DESC LIMIT 1";
+        $last_log = $wpdb->get_row($sql1, ARRAY_A);
+        $count_last_log = $wpdb->num_rows;
+        $day = $user['user_level'] == 'SILVER' ? $day_silver : $day_premium;
+        
+        if ( $last_log['day'] < $day ) {
+            $current_day = $count_last_log == 0 ? 1 : $last_log['day'] + 1;
+            $sql_be = "SELECT * FROM $table_blast_email WHERE user_level='" . $user['user_level'] . "' AND day='" . $current_day. "' LIMIT 1";
+            $blast_email = $wpdb->get_row($sql_be, ARRAY_A);
+
+            $to = $user['user_email'];
+            $subject = "Follow Up Email Hari - " . $blast_email['day'];
+            $headers = array('From: Admin SatuKaki.Net <admin@satukaki.net>', 'Content-Type: text/html; charset=UTF-8');
+            $body = $blast_email['email_msg'];
+            $attachment = array();
+            wp_mail($to, $subject, $body, $headers, $attachment);
+
+            //insert log
+            $data = array(
+                'email_blast_id' => $blast_email['id'],
+                'user_id' => $user['ID'],
+                'sent_date' => date('Y-m-d h:i:s')
+            );
+            
+            $wpdb->insert($table_blast_log, $data);
+        } //endif
+    } //foreach
+}
+
+/** END CRON FOLLOW UP EMAIL */
+
+function wp5673fg_redirect()
+{
+    if (is_user_logged_in()) {
+        // echo 'loggedin';
+    } else {
+        wp_safe_redirect('https://www.google.co.id');
+    }
+}
+add_action('init', 'wp5673fg_redirect');

@@ -12,3 +12,14 @@ saat Join free dan saat verifikasi email.
 6. member area yg berbeda isine untuk free member dan premium member
 
 7. aku arep go internasional => dual language atau bikin web beda ae?
+
+
+
+status ada 2 yaitu status free member yg daftar yg bisa difollow-up nggawe email otomatic, H+0, H+1, H+2, H+n 
+email blast/pengumuman untuk free member
+
+status: premium member (sing wes upgrade), onok email responder juga nggo materi di H+0, H+1, H+2, H+n
+
+iso email blast untuk pengumuman buat member premium.
+
+https://github.com/facebook/react-native/issues/24450#issuecomment-516760157
