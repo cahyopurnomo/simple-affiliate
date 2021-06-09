@@ -13,6 +13,7 @@ Text Domain: WP Simple Affiliate
 
 
 /** START ADMIN MENU */
+ob_start();
 
 add_action("admin_menu", "sa_menu_settings");
 
@@ -446,7 +447,242 @@ function emails_form_meta_box_handler($item){
 
 /** END EMAIL HANDLE */
 
+/** START SHORTCODE HANDLE */
 
+add_shortcode('sa_registration_form', 'custom_registration_shortcode');
+
+function custom_registration_shortcode() {
+    ob_start();
+    custom_registration_function();
+    return ob_get_clean();
+} //custom_registration_shortcode
+
+function custom_registration_function() {
+    global $user_sponsor_id, $user_login, $user_pass, $user_email, $display_name, $user_city, $user_province, $user_phone, $user_level;
+    
+    if ( isset($_POST['submit_']) ) {
+        $user_sponsor_id    = sanitize_user( $_POST['user_sponsor_id_'] );
+        $user_login         = sanitize_user( $_POST['user_login_'] );
+        $user_pass          = sanitize_text_field( $_POST['user_pass_'] );
+        $user_email         = sanitize_email( $_POST['user_email_'] );
+        $display_name       = sanitize_text_field( $_POST['display_name_'] );
+        $user_city          = sanitize_text_field( $_POST['user_city_'] );
+        $user_province      = sanitize_text_field( $_POST['user_province_'] );
+        $user_phone         = sanitize_text_field( $_POST['user_phone_'] );
+        $user_level         = 'SILVER';
+
+        complete_registration($user_sponsor_id, $user_login, $user_pass, $user_email, $display_name, $user_city, $user_province, $user_phone, $user_level);
+    }
+
+    registration_form($user_sponsor_id, $user_login, $user_email, $display_name, $user_city, $user_province, $user_phone, $user_level);
+} //custom_registration_function
+
+function complete_registration() {
+    global $wpdb, $user_sponsor_id, $user_login, $user_pass, $user_email, $display_name, $user_city, $user_province, $user_phone, $user_level;
+
+    $table_users = $wpdb->prefix . 'users';
+    $table_users_details = $wpdb->prefix . 'users_details';
+    
+    $item['user_email'] = $user_email;
+    $item['user_login'] = $user_login;
+    $user_exist = existing_data_validation($item);
+
+    if ( $user_exist == false ){
+        $data_users = array(
+            'user_login'        => $user_login,
+            'user_pass'         => md5($user_pass),
+            'user_login'        => $user_login,
+            'user_nicename'     => $user_login,
+            'user_email'        => $user_email,
+            'user_registered'   => date('Y-m-d h:i:s'),
+            'user_status'       => 0,
+            'display_name'      => $display_name,
+            'user_sponsor_id'   => $user_sponsor_id,
+        );
+        
+        $insert_users = $wpdb->insert($table_users, $data_users);
+        $user_id = $wpdb->insert_id;
+
+        $to = $user_email;
+        $subject = "Selamat Bergabung di SatuKaki.Net";
+        $headers = array('From: Admin SatuKaki.Net <c.purnomo@gmail.com>', 'Content-Type: text/html; charset=UTF-8');
+        $attachment = array();
+        $body = "
+                $display_name, selamat datang di SatuKaki.Net.<br \>
+                <br \><br \>
+                Salam Sukses,<br \>
+                Admin SatuKaki.Net.";
+    
+        wp_mail($to, $subject, $body, $headers, $attachment);
+
+        $data_users_details = array(
+            'user_city'     => $user_city,
+            'user_province' => $user_province,
+            'user_phone'    => $user_phone,
+            'user_level'    => $user_level,
+            'user_id'       => $user_id,
+        );
+
+        $insert_users_details = $wpdb->insert($table_users_details, $data_users_details);
+
+        if ( $insert_users_details ) {
+            echo '<div class="alert alert-primary" role="alert">Selamat! Pendaftaran sukses.</div>';
+        }
+    } else {
+        echo "<div class=\"alert alert-danger\" role=\"alert\">$user_exist</div>";   
+    }
+
+} //complete_registration
+
+function registration_form() {
+    global $wpdb, $user_sponsor_id, $user_login, $user_pass, $user_email, $display_name, $user_city, $user_province, $user_phone, $user_level;
+    $url = esc_url( $_SERVER['REQUEST_URI'] );
+    $table_city_province = $wpdb->prefix . 'city_province';
+
+    $s_id = ( isset($_COOKIE['s_id']) && !empty($_COOKIE['s_id']) ) ? $_COOKIE['s_id'] : 1;
+    $s_code = ( isset($_COOKIE['s_code']) && !empty($_COOKIE['s_code']) ) ? $_COOKIE['s_code'] : 'admin';
+    $s_name = ( isset($_COOKIE['s_name']) && !empty($_COOKIE['s_name']) ) ? $_COOKIE['s_name'] : 'Taufik Kesuma';
+
+    // city
+    $cities = $wpdb->get_results("SELECT * FROM $table_city_province ORDER BY city_name");
+   
+    $cbo_city = '<div class="col-md-6">';
+    $cbo_city .= '<div class="form-group required"><label>Kota</label><select class="form-control select2" name="user_city_" id="cboCity" required>';
+    $cbo_city .= '<option value="">Pilih Kota</option>';   
+
+    foreach( $cities as $city ){
+        if ( $user_city === $city->city_name ) {
+            $cbo_city .= '<option value="'.$city->city_name.'" data-province="'.$city->province_name.'" selected>'.$city->city_name.'</option>';
+        } else {
+            $cbo_city .= '<option value="'.$city->city_name.'" data-province="'.$city->province_name.'">'.$city->city_name.'</option>';
+        }
+        
+    }
+
+    $cbo_city .= '</select></div>';
+    $cbo_city .= '</div>';
+
+    // form
+    echo '
+            
+            <form id="form-pendaftaran" action="'.$url.'" method="post" class="row needs-validation" novalidate>
+                <div class="col-md-6">
+                    <div class="form-group required">
+                        <label>Sponsor</label>                  
+                        <input type="hidden" name="user_sponsor_id_" value="' . ( isset( $s_id ) && !empty($s_id) ? $s_id : 1 ) . '" required>
+                        <input type="text" class="form-control" name="user_sponsor_name_" value="' . ( isset( $s_name ) && !empty($s_name) ? $s_name : 'Taufik Kesuma' ) . '" required disabled="disabled">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group required">
+                        <label>Email</label>                  
+                        <input type="text" name="user_email_" class="form-control" value="'.( isset($user_email) ? $user_email : '' ).'" required>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group required">
+                        <label>Nama Lengkap</label>                  
+                        <input type="text" name="display_name_" class="form-control" value="'.( isset($display_name) ? $display_name : '' ).'" required>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group required">
+                        <label>Nomor WA</label>                  
+                        <input onkeypress="return event.charCode >= 48 && event.charCode <= 57" type="text" maxlength="13" name="user_phone_" class="form-control" value="'.( isset($user_phone) ? $user_phone : '' ).'" required>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group required">
+                        <label>Username</label>                  
+                        <input type="text" name="user_login_" class="form-control" value="'.( isset($user_login) ? $user_login : '' ).'"required>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group required">
+                        <label>Password</label>                  
+                        <input type="password" name="user_pass_" class="form-control" value="'.( isset($user_pass) ? $user_pass : '' ).'" autocomplete="off" required>
+                    </div>
+                </div>
+               '.$cbo_city.'
+               <div class="col-md-6">
+                    <div class="form-group required">
+                        <label>Propinsi</label>                  
+                        <input type="text" name="user_province_" id="user_province" class="form-control" value="'.( isset($user_province) ? $user_province : '' ).'" required readonly="readonly">
+                    </div>
+                </div>
+               <div class="col-md-12">
+                <input type="submit" name="submit_" id="btnSubmit" value="DAFTAR SEKARANG" class="btn btn-success form-control">
+                </div>
+            </form>
+         
+         <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.10/js/select2.min.js"></script>
+         <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" rel="stylesheet">
+         <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.10/css/select2.min.css" rel="stylesheet" />
+         <link href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@1.3.2/dist/select2-bootstrap4.min.css" rel="stylesheet">
+         <style>
+         .required label:after{
+             color: red;
+             content: " *";
+         }
+         </style>
+         <script>
+         
+            jQuery("#cboCity").select2({
+               theme: "bootstrap4",
+            });   
+         </script>
+   ';
+
+} //registration_form
+
+add_shortcode('sa_display_sponsor', 'custom_registration_display_data_shortcode');
+
+function custom_registration_display_data_shortcode() {
+    global $wpdb;
+    
+    $table_users = $wpdb->prefix . 'users';
+    $table_users_details = $wpdb->prefix . 'users_details';
+
+    $sponsor_name = ( isset($_GET['r']) && !empty($_GET['r']) ) ? $_GET['r'] : 'admin';
+    
+    // cek if user exist, if not exist set to admin
+    $sql = "SELECT ID, user_login, display_name ";
+    $sql .= "FROM $table_users ";
+    $sql .= "WHERE user_login = %s";
+    $user = $wpdb->get_row($wpdb->prepare($sql, $sponsor_name), ARRAY_A);
+    $count_user = $wpdb->num_rows;
+
+    $sponsor_name = $count_user == 0 ? 'admin' : $user['user_login'];
+
+    //set cookie
+    setcookie('s_id', $user['ID'], 0, '/');
+    setcookie('s_code', $user['user_login'], 0, '/');
+    setcookie('s_name', $user['display_name'], 0, '/');
+
+    
+    $sql = "SELECT u.ID, u.user_login, u.display_name, ";
+    $sql .= "ud.user_city, ud.user_province, ud.user_phone ";
+    $sql .= "FROM $table_users u ";
+    $sql .= "JOIN $table_users_details ud ON ud.user_id = u.ID ";
+    $sql .= "WHERE u.user_login = %s";
+    $row = $wpdb->get_row($wpdb->prepare($sql, $sponsor_name), ARRAY_A);
+
+    $display_name = ucwords(strtolower($row['display_name']));
+    $user_city = ucwords(strtolower($row['user_city']));
+    $user_province = ucwords(strtolower($row['user_province']));
+    $user_phone = ucwords(strtolower($row['user_phone']));
+    
+    return $display_name.'<br>'.$user_city.'<br>'.$user_province.'<br>WA: '.$user_phone;
+    
+} //custom_registration_display_data_shortcode
+
+function sa_enqueue_script() {
+    wp_enqueue_script( 'sa-main-js', plugins_url( 'js/sa_main.js', __FILE__ ), array('jquery'), false, true );
+}
+
+add_action( 'wp_enqueue_scripts', 'sa_enqueue_script' );
+
+/** END SHORTCODE HANDLE */
 
 
 /** START GLOBAL FUCNTION */
@@ -566,8 +802,8 @@ if ( !wp_next_scheduled('sent_email_hook') ) {
     wp_next_scheduled(time(), 'one-minutes', 'sent_email_hook');
 }
 
-// add_action('sent_email_hook', 'send_email_follow_up');
-add_action('init', 'send_email_follow_up');
+add_action('sent_email_hook', 'send_email_follow_up');
+// add_action('init', 'send_email_follow_up');
 
 function send_email_follow_up() {
     global $wpdb, $email_blast_id, $user_id, $send_date;
