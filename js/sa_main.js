@@ -19,10 +19,11 @@ jQuery(document).ready(function () {
    });
 
    // SELECT PROPINSI WHEN KOTA SELECTED
-   jQuery('#cboCity').change(function () {
+   jQuery('.cboCity').change(function () {
+      
       province = jQuery('option:selected', this).attr('data-province');
       
-      jQuery("#user_province").val(province);
+      jQuery(".user_province").val(province);
       // jQuery("#cboProvince option[value='" + province + "']").attr("selected", "selected");
    });
 })

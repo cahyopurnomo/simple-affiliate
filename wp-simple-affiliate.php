@@ -29,6 +29,80 @@ function sa_menu_settings() {
 /** END ADMIN MENU */
 
 
+/** START TABLE */
+
+register_activation_hhok(__FILE__, 'sa_create_table');
+
+function sa_create_table(){
+    global $wpdb;
+
+    $table_users = $wpdb->prefix . 'users';
+    $table_users_details = $wpdb->prefix . 'users_details';
+    $table_city_province = $wpdb->prefix . 'city_province';
+
+    $sql = "ALTER TABLE $table_users 
+            ADD user_sponsor_id int(11) unsigned NULL DEFAULT 0,
+            ADD token varchar(100) NULL DEFAULT ''";
+    
+    dbDelta($sql);
+
+    $sql = "CREATE TABLE IF NOT EXISTS $table_users_details (
+            `user_detail_id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+            `user_city` varchar(100) DEFAULT NULL,
+            `user_province` varchar(100) DEFAULT NULL,
+            `user_phone` varchar(20) NOT NULL DEFAULT '',
+            `user_level` varchar(20) NOT NULL DEFAULT '',
+            `user_id` int(11) NOT NULL,
+            PRIMARY KEY (`user_detail_id`)
+        ) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=latin1;";
+
+    dbDelta($sql);
+
+    $sql = "CREATE TABLE IF NOT EXISTS $table_city_province (
+            `city_province_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+            `province_name` varchar(100) NOT NULL,
+            `city_name` varchar(100) NOT NULL,
+            PRIMARY KEY (`city_province_id`)
+            ) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=latin1";
+
+    dbDelta($sql);
+} // sa_create_table
+
+register_activation_hhok(__FILE__, 'sa_populate_initial_data');
+
+function sa_populate_initial_data(){
+    global $wpdb;
+
+    $table_users = $wpdb->prefix . 'users';
+    $table_city_province = $wpdb->prefix . 'city_province';
+
+    // update sponsor of admin to him self (0)
+    $data = array(
+        'user_sponsor_id' => '0',
+        'display_name' => 'Taufik Kesuma'
+    );
+
+    $wpdb->update($table_users, $data, array('user_login' => 'admin'));
+
+    //insert city_province
+
+}
+
+/** END TABLE */
+
+/** START SESSION */
+
+add_action('init', 'sa_register_session');
+
+function sa_register_session(){
+    if ( !$session_id() ) {
+        session_start();
+    }
+}
+
+
+/** END SESSION */
+
 /** START MEMBER HANDLE */
 
 if( !class_exists('SA_Member_List') ) {
@@ -112,11 +186,11 @@ function member_form_page_handler() {
                     $notice = __($user_exist, 'sa_simple_affiliate');
                 }
             } else {
+
                 $result = $wpdb->update($table_name, $item, array('ID' => $item['id']));
 
                 if ( $result ) {
                     $message = __('Member was successfully updated', 'sa_simple_affiliate');
-                    // wp_redirect('admin.php?page=members');
                 } else {
                     $notice = __('There was an error while updating member', 'sa_simple_affiliate');
                 }
@@ -185,86 +259,144 @@ function members_form_meta_box_handler($item){
         <tbody>
         <tr class="form-field">
             <th valign="top" scope="row">
-                <label for="sponsor_display_name"><?php _e('Sponsor', 'sa_simple_affiliate')?></label>
+                <div class="required">
+                <label for="sponsor_display_name" required><?php _e('Sponsor', 'sa_simple_affiliate')?></label>
+                </div>
             </th>
             <td>
-                <input id="sponsor_display_name" name="sponsor_display_name" type="text" style="width: 95%" value="<?php echo ( ! empty( $item['sponsor_display_name'] ) ) ? esc_attr( wp_unslash( $item['sponsor_display_name'] ) ) : 'Taufik Kesuma'; ?>" size="100" class="code" placeholder="<?php _e('Sponsor', 'sa_simple_affiliate')?>" required disabled>
+                <input id="sponsor_display_name" name="sponsor_display_name" type="text" style="width: 95%" value="<?php echo ( ! empty( $item['sponsor_display_name'] ) ) ? esc_attr( wp_unslash( $item['sponsor_display_name'] . "(".$item['user_login'].")" ) ) : 'Taufik Kesuma (admin)'; ?>" size="100" class="code" placeholder="<?php _e('Sponsor', 'sa_simple_affiliate')?>" required readonly="readonly">
             </td>
         </tr>
         <tr class="form-field">
             <th valign="top" scope="row">
-                <label for="user_username"><?php _e('Username', 'sa_simple_affiliate')?></label>
+                <div class="required">
+                <label for="user_username" required><?php _e('Username', 'sa_simple_affiliate')?></label>
+                </div>
             </th>
             <td>
                 <input id="user_username" name="user_login" type="text" style="width: 95%" value="<?php echo ( ! empty( $item['user_login'] ) ) ? esc_attr( wp_unslash( $item['user_login'] ) ) : ''; ?>" size="100" class="code" placeholder="<?php _e('Username', 'sa_simple_affiliate')?>" required <?php echo isset($item['id']) && $item['id'] > 0 ? 'disabled_' : ''; ?>>
             </td>
         </tr>
-        <tr class="form-field">
+        <!-- <tr class="form-field">
             <th valign="top" scope="row">
+                <div class="required">
                 <label for="user_pass"><?php _e('Password', 'sa_simple_affiliate')?></label>
+                </div>
             </th>
             <td>
-                <input id="user_pass" name="user_pass" type="password" style="width: 95%" value="<?php echo ( ! empty( $item['user_pass'] ) ) ? esc_attr( wp_unslash( $item['user_pass'] ) ) : ''; ?>" size="100" class="code" placeholder="<?php _e('Password', 'sa_simple_affiliate')?>" required>
+                <input id="user_pass" name="user_pass" type="password" style="width: 95%" value="<?php echo ( ! empty( $item['user_pass'] ) ) ? esc_attr( wp_unslash( $item['user_pass'] ) ) : ''; ?>" size="100" class="code" placeholder="<?php _e('Password', 'sa_simple_affiliate')?>">
+            </td>
+        </tr> -->
+        <tr class="form-field">
+            <th valign="top" scope="row">
+                <div class="required">
+                <label for="user_email" required><?php _e('Email', 'sa_simple_affiliate')?></label>
+                </div>
+            </th>
+            <td>
+                <input id="user_email" name="user_email" type="email" style="width: 95%" value="<?php echo ( ! empty( $item['user_email'] ) ) ? esc_attr( wp_unslash( $item['user_email'] ) ) : ''; ?>" size="50" class="code" placeholder="<?php _e('Email', 'sa_simple_affiliate')?>" required <?php echo isset($item['id']) && $item['id'] > 0 ? 'disabled_' : ''; ?>>
             </td>
         </tr>
         <tr class="form-field">
             <th valign="top" scope="row">
-                <label for="user_nicename"><?php _e('Nicename', 'sa_simple_affiliate')?></label>
+                <div class="required">
+                <label for="display_name"><?php _e('Nama Lengkap', 'sa_simple_affiliate')?></label>
+                </div>
             </th>
             <td>
-                <input id="user_nicename" name="user_nicename" type="text" style="width: 95%" value="<?php echo ( ! empty( $item['user_nicename'] ) ) ? esc_attr( wp_unslash( $item['user_nicename'] ) ) : ''; ?>" size="100" class="code" placeholder="<?php _e('Nicename', 'sa_simple_affiliate')?>" required <?php echo isset($item['id']) && $item['id'] > 0 ? 'disabled_' : ''; ?>>
+                <input id="display_name" name="display_name" type="text" style="width: 95%" value="<?php echo ( ! empty( $item['display_name'] ) ) ? esc_attr( wp_unslash( $item['display_name'] ) ) : ''; ?>" size="100" class="code" placeholder="<?php _e('Nama Lengkap', 'sa_simple_affiliate')?>" required>
             </td>
         </tr>
         <tr class="form-field">
             <th valign="top" scope="row">
-                <label for="user_email"><?php _e('E-Mail', 'sa_simple_affiliate')?></label>
+                <div class="required">
+                <label for="user_phone"><?php _e('Telp. (WA)', 'sa_simple_affiliate')?></label>
+                </div>
             </th>
             <td>
-                <input id="user_email" name="user_email" type="email" style="width: 95%" value="<?php echo ( ! empty( $item['user_email'] ) ) ? esc_attr( wp_unslash( $item['user_email'] ) ) : ''; ?>" size="50" class="code" placeholder="<?php _e('Your E-Mail', 'sa_simple_affiliate')?>" required <?php echo isset($item['id']) && $item['id'] > 0 ? 'disabled_' : ''; ?>>
+                <input onkeypress="return event.charCode >= 48 && event.charCode <= 57" maxlength="13" id="user_phone" name="user_phone" type="text" style="width: 95%" value="<?php echo ( ! empty( $item['user_phone'] ) ) ? esc_attr( wp_unslash( $item['user_phone'] ) ) : ''; ?>" size="100" class="code" placeholder="<?php _e('Telp (WA)', 'sa_simple_affiliate')?>" required>
+            </td>
+        </tr>
+        
+        <tr class="form-field">
+            <th valign="top" scope="row">
+                <div class="required">
+                <label for="user_city"><?php _e('Kota', 'sa_simple_affiliate')?></label>
+                </div>
+            </th>
+            <td>
+            <?php
+                // city
+                global $wpdb;
+                $table_city_province = $wpdb->prefix . 'city_province';
+                $cities = $wpdb->get_results("SELECT * FROM $table_city_province ORDER BY city_name");
+            
+                echo '<select class="form-control select2 cboCity" style="width: 95%" name="user_city_" id="cboCity" required>';
+                echo '<option value="">Pilih Kota</option>';   
+
+                foreach( $cities as $city ){
+                    if ( isset($item['user_city']) && $item['user_city'] === $city->city_name ) {
+                        echo '<option value="'.$city->city_name.'" data-province="'.$city->province_name.'" selected>'.$city->city_name.'</option>';
+                    } else {
+                        echo '<option value="'.$city->city_name.'" data-province="'.$city->province_name.'">'.$city->city_name.'</option>';
+                    }
+                    
+                }
+
+                echo '</select>';
+            ?>
             </td>
         </tr>
         <tr class="form-field">
             <th valign="top" scope="row">
-                <label for="display_name"><?php _e('Display Name', 'sa_simple_affiliate')?></label>
+                <div class="required">
+                <label for="user_province"><?php _e('Propinsi', 'sa_simple_affiliate')?></label>
+                </div>
             </th>
             <td>
-                <input id="display_name" name="display_name" type="text" style="width: 95%" value="<?php echo ( ! empty( $item['display_name'] ) ) ? esc_attr( wp_unslash( $item['display_name'] ) ) : ''; ?>" size="100" class="code" placeholder="<?php _e('Display Name', 'sa_simple_affiliate')?>" required>
+                <input id="user_province" name="user_province" type="text" style="width: 95%" value="<?php echo ( ! empty( $item['user_province'] ) ) ? esc_attr( wp_unslash( $item['user_province'] ) ) : ''; ?>" size="100" class="code user_province" placeholder="<?php _e('Propinsi', 'sa_simple_affiliate')?>" required readonly="readonly">
             </td>
         </tr>
         <tr class="form-field">
             <th valign="top" scope="row">
-                <label for="user_phone"><?php _e('Phone', 'sa_simple_affiliate')?></label>
+                <div class="required">
+                <label for="user_level"><?php _e('Member Level', 'sa_simple_affiliate')?></label>
+                </div>
             </th>
             <td>
-                <input id="user_phone" name="user_phone" type="text" style="width: 95%" value="<?php echo ( ! empty( $item['user_phone'] ) ) ? esc_attr( wp_unslash( $item['user_phone'] ) ) : ''; ?>" size="100" class="code" placeholder="<?php _e('Phone', 'sa_simple_affiliate')?>" required>
-            </td>
-        </tr>
-        <tr class="form-field">
-            <th valign="top" scope="row">
-                <label for="user_city"><?php _e('City', 'sa_simple_affiliate')?></label>
-            </th>
-            <td>
-                <input id="user_city" name="user_city" type="text" style="width: 95%" value="<?php echo ( ! empty( $item['user_city'] ) ) ? esc_attr( wp_unslash( $item['user_city'] ) ) : ''; ?>" size="100" class="code" placeholder="<?php _e('City', 'sa_simple_affiliate')?>" required>
-            </td>
-        </tr>
-        <tr class="form-field">
-            <th valign="top" scope="row">
-                <label for="user_province"><?php _e('Province', 'sa_simple_affiliate')?></label>
-            </th>
-            <td>
-                <input id="user_province" name="user_province" type="text" style="width: 95%" value="<?php echo ( ! empty( $item['user_province'] ) ) ? esc_attr( wp_unslash( $item['user_province'] ) ) : ''; ?>" size="100" class="code" placeholder="<?php _e('Province', 'sa_simple_affiliate')?>" required>
-            </td>
-        </tr>
-        <tr class="form-field">
-            <th valign="top" scope="row">
-                <label for="user_level"><?php _e('Level', 'sa_simple_affiliate')?></label>
-            </th>
-            <td>
-                <input id="user_level" name="user_level" type="text" style="width: 95%" value="<?php echo ( ! empty( $item['user_level'] ) ) ? esc_attr( wp_unslash( $item['user_level'] ) ) : 'SILVER'; ?>" size="100" class="code" placeholder="<?php _e('Level', 'sa_simple_affiliate')?>" required>
+                <?php  
+                    $selected_silver = !empty( $item['user_level'] ) && $item['user_level'] == 'FREE' ? 'selected' : ''; 
+                    $selected_premium = !empty( $item['user_level'] ) && $item['user_level'] == 'PREMIUM' ? 'selected' : ''; 
+                ?>
+                <select name="user_level" style="width: 95%" required>
+                    <option value="FREE" <?=$selected_silver?>>FREE MEMBER</option>
+                    <option value="PREMIUM" <?=$selected_premium?>>PREMIUM</option>
+                </select>
             </td>
         </tr>
         </tbody>
     </table>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.10/js/select2.min.js"></script>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.10/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@1.3.2/dist/select2-bootstrap4.min.css" rel="stylesheet">
+    <script>
+        jQuery(".cboCity").select2({
+            theme: "bootstrap4",
+        }); 
+        
+        jQuery('.cboCity').change(function () {
+      
+            province = jQuery('option:selected', this).attr('data-province');
+            jQuery(".user_province").val(province);
+        });
+    </script>
+    <style>
+         .required label:after{
+             color: red;
+             content: " *";
+         }
+         </style>
     <?php
 } // members_form_meta_box_handler
 
@@ -419,14 +551,13 @@ function emails_form_meta_box_handler($item){
             </th>
             <td>
                 <?php  
-                $selected_silver = !empty( $item['user_level'] ) && $item['user_level'] == 'SILVER' ? 'selected' : ''; 
-                $selected_premium = !empty( $item['user_level'] ) && $item['user_level'] == 'premium' ? 'selected' : ''; 
+                $selected_silver = !empty( $item['user_level'] ) && $item['user_level'] == 'FREE' ? 'selected' : ''; 
+                $selected_premium = !empty( $item['user_level'] ) && $item['user_level'] == 'PREMIUM' ? 'selected' : ''; 
                 ?>
                 <select name="user_level">
-                    <option value="SILVER" <?=$selected_silver?>>SILVER</option>
+                    <option value="FREE" <?=$selected_silver?>>FREE MEMBER</option>
                     <option value="PREMIUM" <?=$selected_premium?>>PREMIUM</option>
                 </select>
-                <!-- <input id="user_level" name="user_level" type="text" style="width: 95%" value="<?php echo ( ! empty( $item['user_level'] ) ) ? esc_attr( wp_unslash( $item['user_level'] ) ) : ''; ?>" size="100" class="code" placeholder="<?php _e('Member Level', 'sa_simple_affiliate')?>" required> -->
             </td>
         </tr>
         <tr class="form-field">
@@ -469,7 +600,7 @@ function custom_registration_function() {
         $user_city          = sanitize_text_field( $_POST['user_city_'] );
         $user_province      = sanitize_text_field( $_POST['user_province_'] );
         $user_phone         = sanitize_text_field( $_POST['user_phone_'] );
-        $user_level         = 'SILVER';
+        $user_level         = 'FREE';
 
         complete_registration($user_sponsor_id, $user_login, $user_pass, $user_email, $display_name, $user_city, $user_province, $user_phone, $user_level);
     }
@@ -547,7 +678,7 @@ function registration_form() {
     $cities = $wpdb->get_results("SELECT * FROM $table_city_province ORDER BY city_name");
    
     $cbo_city = '<div class="col-md-6">';
-    $cbo_city .= '<div class="form-group required"><label>Kota</label><select class="form-control select2" name="user_city_" id="cboCity" required>';
+    $cbo_city .= '<div class="form-group required"><label>Kota</label><select class="form-control cboCity select2" name="user_city_" id="cboCity" required>';
     $cbo_city .= '<option value="">Pilih Kota</option>';   
 
     foreach( $cities as $city ){
@@ -566,11 +697,11 @@ function registration_form() {
     echo '
             
             <form id="form-pendaftaran" action="'.$url.'" method="post" class="row needs-validation" novalidate>
-                <div class="col-md-6">
+                <div class="col-md-12">
                     <div class="form-group required">
-                        <label>Sponsor</label>                  
+                        <label>User Sponsor</label>                  
                         <input type="hidden" name="user_sponsor_id_" value="' . ( isset( $s_id ) && !empty($s_id) ? $s_id : 1 ) . '" required>
-                        <input type="text" class="form-control" name="user_sponsor_name_" value="' . ( isset( $s_name ) && !empty($s_name) ? $s_name : 'Taufik Kesuma' ) . '" required disabled="disabled">
+                        <input type="text" class="form-control" name="user_sponsor_name_" value="' . ( isset( $s_name ) && !empty($s_name) ? $s_code . ' ('.$s_name.')' : 'admin (Taufik Kesuma)' ) . '" required disabled="disabled">
                     </div>
                 </div>
                 <div class="col-md-6">
@@ -597,12 +728,6 @@ function registration_form() {
                         <input type="text" name="user_login_" class="form-control" value="'.( isset($user_login) ? $user_login : '' ).'"required>
                     </div>
                 </div>
-                <div class="col-md-6">
-                    <div class="form-group required">
-                        <label>Password</label>                  
-                        <input type="password" name="user_pass_" class="form-control" value="'.( isset($user_pass) ? $user_pass : '' ).'" autocomplete="off" required>
-                    </div>
-                </div>
                '.$cbo_city.'
                <div class="col-md-6">
                     <div class="form-group required">
@@ -627,7 +752,7 @@ function registration_form() {
          </style>
          <script>
          
-            jQuery("#cboCity").select2({
+            jQuery(".cboCity").select2({
                theme: "bootstrap4",
             });   
          </script>
@@ -740,11 +865,11 @@ function input_member_validation($item){
     if ( empty($item['user_login']) )
         $messages[] = __('Username is required', 'sa_simple_affiliate');
     
-    if ( empty($item['user_pass']) )
-        $messages[] = __('Password is required', 'sa_simple_affiliate');
+    // if ( empty($item['ID']) && empty($item['user_pass']) )
+    //     $messages[] = __('Password is required', 'sa_simple_affiliate');
     
-    if ( empty($item['user_nicename']) )
-        $messages[] = __('Nicename is required', 'sa_simple_affiliate');
+    // if ( empty($item['user_nicename']) )
+    //     $messages[] = __('Nicename is required', 'sa_simple_affiliate');
     
     if ( empty($item['user_email']) )
         $messages[] = __('Email is required', 'sa_simple_affiliate');
@@ -814,7 +939,7 @@ function send_email_follow_up() {
     $table_blast_log = $wpdb->prefix . 'blast_log';
     $table_blast_email = $wpdb->prefix . 'blast_email';
 
-    $sql = "SELECT * FROM $table_blast_email WHERE user_level='SILVER' ORDER BY id DESC LIMIT 1";
+    $sql = "SELECT * FROM $table_blast_email WHERE user_level='FREE' ORDER BY id DESC LIMIT 1";
     $data_silver = $wpdb->get_row($sql, ARRAY_A);
     $day_silver = $data_silver['day'];
 
@@ -835,7 +960,7 @@ function send_email_follow_up() {
         $sql1 .= "WHERE bl.user_id=" . $user['ID'] . " AND be.user_level='" . $user['user_level'] . "' ORDER BY id DESC LIMIT 1";
         $last_log = $wpdb->get_row($sql1, ARRAY_A);
         $count_last_log = $wpdb->num_rows;
-        $day = $user['user_level'] == 'SILVER' ? $day_silver : $day_premium;
+        $day = $user['user_level'] == 'FREE' ? $day_silver : $day_premium;
         
         if ( $last_log['day'] < $day ) {
             $current_day = $count_last_log == 0 ? 1 : $last_log['day'] + 1;
@@ -851,9 +976,10 @@ function send_email_follow_up() {
 
             //insert log
             $data = array(
-                'email_blast_id' => $blast_email['id'],
-                'user_id' => $user['ID'],
-                'sent_date' => date('Y-m-d h:i:s')
+                'email_blast_id'    => $blast_email['id'],
+                'user_id'           => $user['ID'],
+                'channel'           => 'email',
+                'sent_date'         => date('Y-m-d h:i:s')
             );
             
             $wpdb->insert($table_blast_log, $data);
